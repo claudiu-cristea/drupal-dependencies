@@ -1,0 +1,24 @@
+name: ci
+on: [push, pull_request]
+jobs:
+    tests:
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                php_version: ["8.0", "8.1", "8.2"]
+        env:
+            PHP_VERSION: ${{ matrix.php_version }}
+        steps:
+            - name: clone
+              uses: actions/checkout@v3
+            - name: composer self-update
+              run: composer self-update
+            - name: composer install
+              run: composer install --no-progress --no-ansi --no-interaction
+            - name: site install
+              run: composer site:install
+            - name: phpcs
+              run: composer phpcs
+            - name: phpunit
+              run: composer phpunit

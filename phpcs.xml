@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ruleset name="Drupal Dependencies Drush Commands">
+    <rule ref="./vendor/squizlabs/php_codesniffer/src/Standards/PSR12"/>
+    <file>./src</file>
+    <file>./tests</file>
+    <arg name="extensions" value="php"/>
+    <arg name="report" value="full"/>
+    <arg value="p"/>
+</ruleset>
