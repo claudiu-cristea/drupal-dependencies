@@ -106,15 +106,17 @@ class DrupalDependenciesDrushCommands extends DrushCommands
             }, \Drupal::service('extension.list.module')->getList());
 
             if (!$notOnlyInstalled) {
-                $this->dependencies['module-module'] = array_intersect_key($this->dependencies['module-module'], $installedModules);
+                $this->dependencies['module-module'] = array_intersect_key(
+                    $this->dependencies['module-module'],
+                    $installedModules
+                );
             }
             if (!isset($this->dependencies['module-module'][$module])) {
                 throw new \InvalidArgumentException(dt('Invalid @module module', [
                     '@module' => $module,
                 ]));
             }
-        }
-        elseif (!isset($installedModules[$module])) {
+        } elseif (!isset($installedModules[$module])) {
             throw new \InvalidArgumentException(dt('Invalid @module module', [
                 '@module' => $module,
             ]));

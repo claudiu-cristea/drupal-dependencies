@@ -74,10 +74,16 @@ class DrupalDependenciesTest extends TestCase
         $this->assertStringContainsString("The --type option is mandatory", $this->getErrorOutput());
 
         $this->drush('why:module', ['node'], ['type' => 'wrong'], null, null, 1);
-        $this->assertStringContainsString("The --type option can take only 'module' or 'config' as value", $this->getErrorOutput());
+        $this->assertStringContainsString(
+            "The --type option can take only 'module' or 'config' as value",
+            $this->getErrorOutput()
+        );
 
         $this->drush('why:module', ['node'], ['type' => 'config', 'no-only-installed' => null], null, null, 1);
-        $this->assertStringContainsString("Cannot use --type=config together with --no-only-installed", $this->getErrorOutput());
+        $this->assertStringContainsString(
+            "Cannot use --type=config together with --no-only-installed",
+            $this->getErrorOutput()
+        );
     }
 
     /**
