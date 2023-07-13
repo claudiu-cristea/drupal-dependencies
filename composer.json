@@ -1,6 +1,6 @@
 {
     "name": "claudiu-cristea/drupal-dependencies",
-    "description": "Drush command to list Drupal dependencies",
+    "description": "Drush commands to list Drupal dependencies",
     "license": "GPL-2.0-or-later",
     "authors": [
         {
