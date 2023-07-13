@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace Drupal\Dependencies\Drush\Commands;
 
+use Consolidation\AnnotatedCommand\CommandData;
+use Consolidation\AnnotatedCommand\Hooks\HookManager;
 use Drupal\Component\Utility\NestedArray;
+use Drupal\Core\Config\Entity\ConfigEntityInterface;
+use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Extension\Dependency;
+use Drupal\Core\Extension\Extension;
 use Drush\Attributes as CLI;
 use Drush\Boot\DrupalBootLevels;
 use Drush\Commands\DrushCommands;
+use Symfony\Component\Console\Input\InputOption;
 
 /**
  * Drush commands revealing Drupal dependencies.
@@ -16,44 +22,96 @@ use Drush\Commands\DrushCommands;
 class DrupalDependenciesDrushCommands extends DrushCommands
 {
     private const CIRCULAR_REFERENCE = 'circular_reference';
-    private array $dependencies = [];
+    private array $dependents = [];
     private array $tree = [];
     private array $relation = [];
     private array $canvas = [];
+    private array $moduleModuleDependencies = [];
+    private array $configModuleDependencies = [];
+    private array $configConfigDependencies = [];
 
     #[CLI\Command(name: 'why:module', aliases: ['wm'])]
-    #[CLI\Help(description: 'List all modules that depend on a given module')]
+    #[CLI\Help(description: 'List all objects (modules, configurations) depending on a given module')]
     #[CLI\Argument(name: 'module', description: 'The module to check dependencies for')]
+    #[CLI\Option(
+        name: 'type',
+        description: 'Type of dependents: module, config',
+        suggestedValues: ['module', 'config']
+    )]
     #[CLI\Option(name: 'only-installed', description: 'Only check for installed modules')]
+    #[CLI\Usage(
+        name: 'drush why:module node --type=module',
+        description: 'Show all installed modules depending on node module'
+    )]
+    #[CLI\Usage(
+        name: 'drush why:module node --type=module --no-only-installed',
+        description: 'Show all modules, including uninstalled, depending on node module'
+    )]
+    #[CLI\Usage(
+        name: 'drush why:module node --type=config',
+        description: 'Show all configuration entities depending on node module'
+    )]
     #[CLI\Bootstrap(level: DrupalBootLevels::FULL)]
-    public function why(string $module, array $options = [
+    public function dependentsOfModule(string $module, array $options = [
+        'type' => InputOption::VALUE_REQUIRED,
         'only-installed' => true,
     ]): ?string
     {
-        $list = \Drupal::service('extension.list.module')->getList();
-        if ($options['only-installed']) {
-            $installed = \Drupal::getContainer()->getParameter('container.modules');
-            $list = array_intersect_key($list, $installed);
-        }
-        if (!isset($list[$module])) {
-            throw new \InvalidArgumentException(dt('Invalid @module module', [
-                '@module' => $module,
-            ]));
+        if ($options['type'] === 'module') {
+            $this->buildDependents($this->moduleModuleDependencies);
+        } else {
+            $this->scanConfigs();
+            $this->buildDependents($this->configModuleDependencies);
+            $this->buildDependents($this->configConfigDependencies);
         }
 
-        $this->buildDependencies($list);
-
-        if (!isset($this->dependencies[$module])) {
+        if (!isset($this->dependents[$module])) {
             $this->logger()->notice(dt('No other module depends on @module', [
                 '@module' => $module,
             ]));
             return null;
         }
-
         $this->canvas[] = $module;
         $this->buildTree($module);
 
+
         return implode("\n", $this->canvas);
+    }
+
+    #[CLI\Hook(type: HookManager::ARGUMENT_VALIDATOR, target: 'why:module')]
+    public function validateDependentsOfModule(CommandData $commandData): void
+    {
+        $type = $commandData->input()->getOption('type');
+        if (empty($type)) {
+            throw new \InvalidArgumentException("The --type option is mandatory");
+        }
+        if (!in_array($type, ['module', 'config'], true)) {
+            throw new \InvalidArgumentException("The --type option can take only 'module' or 'config' as value");
+        }
+
+        $notOnlyInstalled = $commandData->input()->getOption('no-only-installed');
+        if ($notOnlyInstalled && $type === 'config') {
+            throw new \InvalidArgumentException("Cannot use --type=config together with --no-only-installed");
+        }
+
+        if ($type === 'module') {
+            $this->moduleModuleDependencies = array_map(function (Extension $extension): array {
+                return array_map(function (string $dependencyString) {
+                    return Dependency::createFromString($dependencyString)->getName();
+                }, $extension->info['dependencies']);
+            }, \Drupal::service('extension.list.module')->getList());
+
+            if (!$notOnlyInstalled) {
+                $installed = \Drupal::getContainer()->getParameter('container.modules');
+                $this->moduleModuleDependencies = array_intersect_key($this->moduleModuleDependencies, $installed);
+            }
+            $module = $commandData->input()->getArgument('module');
+            if (!isset($this->moduleModuleDependencies[$module])) {
+                throw new \InvalidArgumentException(dt('Invalid @module module', [
+                    '@module' => $module,
+                ]));
+            }
+        }
     }
 
     /**
@@ -64,21 +122,21 @@ class DrupalDependenciesDrushCommands extends DrushCommands
     protected function buildTree(string $dependency, array $path = [], string $indent = ''): void
     {
         $path[] = $dependency;
-        $dependants = $this->dependencies[$dependency];
-        foreach (array_keys($dependants) as $delta => $module) {
-            $lastFromThisLevel = $delta + 1 < count($dependants);
+        $dependents = $this->dependents[$dependency];
+        foreach (array_keys($dependents) as $delta => $dependent) {
+            $lastFromThisLevel = $delta + 1 < count($dependents);
             $char = $lastFromThisLevel ? '├' : '└';
-            $stroke = $indent . "{$char}─" . $module;
+            $stroke = $indent . "{$char}─" . $dependent;
             if (!NestedArray::keyExists($this->tree, $path)) {
                 NestedArray::setValue($this->tree, $path, []);
             }
 
-            $circularReference = isset($this->relation[$dependency]) && $this->relation[$dependency] === $module;
+            $circularReference = isset($this->relation[$dependency]) && $this->relation[$dependency] === $dependent;
             if ($circularReference) {
                 // This relation has been already defined on other path. We mark it as
                 // circular reference.
-                NestedArray::setValue($this->tree, [...$path, ...[$module]], self::CIRCULAR_REFERENCE);
-                $stroke .= ' [' . dt('circular reference') . ']';
+                NestedArray::setValue($this->tree, [...$path, ...[$dependent]], self::CIRCULAR_REFERENCE);
+                $stroke .= ' (' . dt('CIRCULAR') . ')';
             }
 
             // Draw a new line to the canvas.
@@ -89,12 +147,12 @@ class DrupalDependenciesDrushCommands extends DrushCommands
             }
 
             // Save this relation to avoid infinite circular references.
-            $this->relation[$dependency] = $module;
-            if (isset($this->dependencies[$module])) {
+            $this->relation[$dependency] = $dependent;
+            if (isset($this->dependents[$dependent])) {
                 $char = $lastFromThisLevel ? '│' : ' ';
-                $this->buildTree($module, $path, $indent . "$char ");
+                $this->buildTree($dependent, $path, $indent . "$char ");
             } else {
-                NestedArray::setValue($this->tree, [...$path, ...[$module]], []);
+                NestedArray::setValue($this->tree, [...$path, ...[$dependent]], []);
             }
         }
     }
@@ -102,12 +160,34 @@ class DrupalDependenciesDrushCommands extends DrushCommands
     /**
      * @param array $list
      */
-    protected function buildDependencies(array $list): void
+    protected function buildDependents(array $list): void
     {
-        foreach ($list as $module => $data) {
-            foreach ($data->info['dependencies'] as $dependencyString) {
-                $dependency = Dependency::createFromString($dependencyString)->getName();
-                $this->dependencies[$dependency][$module] = $module;
+        foreach ($list as $dependent => $dependencies) {
+            foreach ($dependencies as $dependency) {
+                $this->dependents[$dependency][$dependent] = $dependent;
+            }
+        }
+    }
+
+    protected function scanConfigs(): void
+    {
+        $entityTypeManager = \Drupal::entityTypeManager();
+        $configTypeIds = array_keys(
+            array_filter($entityTypeManager->getDefinitions(), function (EntityTypeInterface $entityType): bool {
+                return $entityType->entityClassImplements(ConfigEntityInterface::class);
+            })
+        );
+        foreach ($configTypeIds as $configTypeId) {
+            /** @var \Drupal\Core\Config\Entity\ConfigEntityInterface $config */
+            foreach ($entityTypeManager->getStorage($configTypeId)->loadMultiple() as $id => $config) {
+                $dependencies = $config->getDependencies();
+                $name = $config->getConfigDependencyName();
+                if (!empty($dependencies['module'])) {
+                    $this->configModuleDependencies[$name] = $dependencies['module'];
+                }
+                if (!empty($dependencies['config'])) {
+                    $this->configConfigDependencies[$name] = $dependencies['config'];
+                }
             }
         }
     }

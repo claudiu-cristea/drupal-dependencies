@@ -19,14 +19,15 @@ class DrupalDependenciesTest extends TestCase
     {
         $this->drush('list');
         $this->assertStringContainsString('why:module (wm)', $this->getOutput());
-        $this->assertStringContainsString('List all modules that depend on a given module', $this->getOutput());
+        $this->assertStringContainsString('List all objects (modules, configurations)', $this->getOutput());
+        $this->assertStringContainsString('depending on a given module', $this->getOutput());
 
         // Trying to check an uninstalled module.
-        $this->drush('why:module', ['node'], [], null, null, 1);
+        $this->drush('why:module', ['node'], ['type' => 'module'], null, null, 1);
         $this->assertStringContainsString('Invalid node module', $this->getErrorOutput());
 
         // Check also uninstalled modules.
-        $this->drush('wm', ['node'], ['no-only-installed' => null]);
+        $this->drush('wm', ['node'], ['type' => 'module', 'no-only-installed' => null]);
         $expected = <<<EXPECTED
             node
             ├─book
@@ -44,11 +45,11 @@ class DrupalDependenciesTest extends TestCase
         $this->drush('pm:install', ['node']);
 
         // No installed dependencies.
-        $this->drush('why:module', ['node']);
+        $this->drush('why:module', ['node'], ['type' => 'module']);
         $this->assertSame('[notice] No other module depends on node', $this->getErrorOutput());
 
         $this->drush('pm:install', ['forum']);
-        $this->drush('wm', ['node']);
+        $this->drush('wm', ['node'], ['type' => 'module']);
         $expected = <<<EXPECTED
             node
             ├─forum
