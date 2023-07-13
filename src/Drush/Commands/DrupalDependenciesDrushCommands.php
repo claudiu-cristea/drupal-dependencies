@@ -26,9 +26,11 @@ class DrupalDependenciesDrushCommands extends DrushCommands
     private array $tree = [];
     private array $relation = [];
     private array $canvas = [];
-    private array $moduleModuleDependencies = [];
-    private array $configModuleDependencies = [];
-    private array $configConfigDependencies = [];
+    private array $dependencies = [
+      'module-module' => [],
+      'config-module' => [],
+      'config-config' => [],
+    ];
 
     #[CLI\Command(name: 'why:module', aliases: ['wm'])]
     #[CLI\Help(description: 'List all objects (modules, configurations) depending on a given module')]
@@ -58,11 +60,11 @@ class DrupalDependenciesDrushCommands extends DrushCommands
     ]): ?string
     {
         if ($options['type'] === 'module') {
-            $this->buildDependents($this->moduleModuleDependencies);
+            $this->buildDependents($this->dependencies['module-module']);
         } else {
             $this->scanConfigs();
-            $this->buildDependents($this->configModuleDependencies);
-            $this->buildDependents($this->configConfigDependencies);
+            $this->buildDependents($this->dependencies['config-module']);
+            $this->buildDependents($this->dependencies['config-config']);
         }
 
         if (!isset($this->dependents[$module])) {
@@ -94,23 +96,28 @@ class DrupalDependenciesDrushCommands extends DrushCommands
             throw new \InvalidArgumentException("Cannot use --type=config together with --no-only-installed");
         }
 
+        $installedModules = \Drupal::getContainer()->getParameter('container.modules');
+        $module = $commandData->input()->getArgument('module');
         if ($type === 'module') {
-            $this->moduleModuleDependencies = array_map(function (Extension $extension): array {
+            $this->dependencies['module-module'] = array_map(function (Extension $extension): array {
                 return array_map(function (string $dependencyString) {
                     return Dependency::createFromString($dependencyString)->getName();
                 }, $extension->info['dependencies']);
             }, \Drupal::service('extension.list.module')->getList());
 
             if (!$notOnlyInstalled) {
-                $installed = \Drupal::getContainer()->getParameter('container.modules');
-                $this->moduleModuleDependencies = array_intersect_key($this->moduleModuleDependencies, $installed);
+                $this->dependencies['module-module'] = array_intersect_key($this->dependencies['module-module'], $installedModules);
             }
-            $module = $commandData->input()->getArgument('module');
-            if (!isset($this->moduleModuleDependencies[$module])) {
+            if (!isset($this->dependencies['module-module'][$module])) {
                 throw new \InvalidArgumentException(dt('Invalid @module module', [
                     '@module' => $module,
                 ]));
             }
+        }
+        elseif (!isset($installedModules[$module])) {
+            throw new \InvalidArgumentException(dt('Invalid @module module', [
+                '@module' => $module,
+            ]));
         }
     }
 
@@ -133,8 +140,8 @@ class DrupalDependenciesDrushCommands extends DrushCommands
 
             $circularReference = isset($this->relation[$dependency]) && $this->relation[$dependency] === $dependent;
             if ($circularReference) {
-                // This relation has been already defined on other path. We mark it as
-                // circular reference.
+                // This relation has been already defined on other path. We mark
+                // it as circular reference.
                 NestedArray::setValue($this->tree, [...$path, ...[$dependent]], self::CIRCULAR_REFERENCE);
                 $stroke .= ' (' . dt('CIRCULAR') . ')';
             }
@@ -179,14 +186,14 @@ class DrupalDependenciesDrushCommands extends DrushCommands
         );
         foreach ($configTypeIds as $configTypeId) {
             /** @var \Drupal\Core\Config\Entity\ConfigEntityInterface $config */
-            foreach ($entityTypeManager->getStorage($configTypeId)->loadMultiple() as $id => $config) {
+            foreach ($entityTypeManager->getStorage($configTypeId)->loadMultiple() as $config) {
                 $dependencies = $config->getDependencies();
                 $name = $config->getConfigDependencyName();
                 if (!empty($dependencies['module'])) {
-                    $this->configModuleDependencies[$name] = $dependencies['module'];
+                    $this->dependencies['config-module'][$name] = $dependencies['module'];
                 }
                 if (!empty($dependencies['config'])) {
-                    $this->configConfigDependencies[$name] = $dependencies['config'];
+                    $this->dependencies['config-config'][$name] = $dependencies['config'];
                 }
             }
         }
