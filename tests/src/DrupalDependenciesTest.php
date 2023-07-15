@@ -23,11 +23,14 @@ class DrupalDependenciesTest extends TestCase
         $this->assertStringContainsString('depending on a given module', $this->getOutput());
 
         // Trying to check an uninstalled module.
-        $this->drush('why:module', ['node'], ['type' => 'module'], null, null, 1);
+        $this->drush('why:module', ['node'], ['dependent-type' => 'module'], null, null, 1);
         $this->assertStringContainsString('Invalid node module', $this->getErrorOutput());
 
         // Check also uninstalled modules.
-        $this->drush('wm', ['node'], ['type' => 'module', 'no-only-installed' => null]);
+        $this->drush('wm', ['node'], [
+            'dependent-type' => 'module',
+            'no-only-installed' => null,
+        ]);
         $expected = <<<EXPECTED
             node
             ├─book
@@ -45,11 +48,11 @@ class DrupalDependenciesTest extends TestCase
         $this->drush('pm:install', ['node']);
 
         // No installed dependencies.
-        $this->drush('why:module', ['node'], ['type' => 'module']);
+        $this->drush('why:module', ['node'], ['dependent-type' => 'module']);
         $this->assertSame('[notice] No other module depends on node', $this->getErrorOutput());
 
         $this->drush('pm:install', ['forum']);
-        $this->drush('wm', ['node'], ['type' => 'module']);
+        $this->drush('wm', ['node'], ['dependent-type' => 'module']);
         $expected = <<<EXPECTED
             node
             ├─forum
@@ -71,17 +74,20 @@ class DrupalDependenciesTest extends TestCase
     public function testOptionsMismatch(): void
     {
         $this->drush('why:module', ['node'], [], null, null, 1);
-        $this->assertStringContainsString("The --type option is mandatory", $this->getErrorOutput());
+        $this->assertStringContainsString("The --dependent-type option is mandatory", $this->getErrorOutput());
 
-        $this->drush('why:module', ['node'], ['type' => 'wrong'], null, null, 1);
+        $this->drush('why:module', ['node'], ['dependent-type' => 'wrong'], null, null, 1);
         $this->assertStringContainsString(
-            "The --type option can take only 'module' or 'config' as value",
+            "The --dependent-type option can take only 'module' or 'config' as value",
             $this->getErrorOutput()
         );
 
-        $this->drush('why:module', ['node'], ['type' => 'config', 'no-only-installed' => null], null, null, 1);
+        $this->drush('why:module', ['node'], [
+            'dependent-type' => 'config',
+            'no-only-installed' => null,
+        ], null, null, 1);
         $this->assertStringContainsString(
-            "Cannot use --type=config together with --no-only-installed",
+            "Cannot use --dependent-type=config together with --no-only-installed",
             $this->getErrorOutput()
         );
     }
@@ -92,14 +98,14 @@ class DrupalDependenciesTest extends TestCase
     public function testConfigDependentOfModule(): void
     {
         // Trying to check an uninstalled module.
-        $this->drush('why:module', ['node'], ['type' => 'config'], null, null, 1);
+        $this->drush('why:module', ['node'], ['dependent-type' => 'config'], null, null, 1);
         $this->assertStringContainsString('Invalid node module', $this->getErrorOutput());
 
         // Install node module.
         $this->drush('pm:install', ['node']);
 
         // No installed dependencies.
-        $this->drush('why:module', ['node'], ['type' => 'config']);
+        $this->drush('why:module', ['node'], ['dependent-type' => 'config']);
         $expected = <<<EXPECTED
             node
             ├─core.entity_view_mode.node.full
@@ -120,7 +126,7 @@ class DrupalDependenciesTest extends TestCase
         $this->assertStringContainsString($expected, $this->getOutput());
 
         $this->drush('pm:install', ['forum']);
-        $this->drush('wm', ['node'], ['type' => 'config']);
+        $this->drush('wm', ['node'], ['dependent-type' => 'config']);
 
         $expected = <<<EXPECTED
             node
