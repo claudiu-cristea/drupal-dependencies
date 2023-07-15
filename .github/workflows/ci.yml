@@ -27,6 +27,8 @@ jobs:
         run: docker-compose exec -T php composer install --no-progress --no-ansi --no-interaction
       - name: composer site:install
         run: docker-compose exec -T php composer site:install
+      - name: drush status
+        run: docker-compose exec -T php ./vendor/bin/drush status
       - name: composer phpcs
         run: docker-compose exec -T php composer phpcs
       - name: composer phpunit
