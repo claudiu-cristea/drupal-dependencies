@@ -68,8 +68,9 @@ class DrupalDependenciesDrushCommands extends DrushCommands
         }
 
         if (!isset($this->dependents[$module])) {
-            $this->logger()->notice(dt('No other module depends on @module', [
+            $this->logger()->notice(dt('No @type depends on @module', [
                 '@module' => $module,
+                '@type' => $options['dependent-type'] === 'module' ? dt('config entity') : dt('other module'),
             ]));
             return null;
         }
