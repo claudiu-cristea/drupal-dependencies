@@ -102,6 +102,11 @@ class DrupalDependenciesTest extends TestCase
         $this->drush('why:module', ['node'], ['type' => 'config']);
         $expected = <<<EXPECTED
             node
+            ├─core.entity_view_mode.node.full
+            ├─core.entity_view_mode.node.rss
+            ├─core.entity_view_mode.node.search_index
+            ├─core.entity_view_mode.node.search_result
+            ├─core.entity_view_mode.node.teaser
             ├─field.storage.node.body
             ├─system.action.node_delete_action
             ├─system.action.node_make_sticky_action
@@ -110,12 +115,7 @@ class DrupalDependenciesTest extends TestCase
             ├─system.action.node_publish_action
             ├─system.action.node_save_action
             ├─system.action.node_unpromote_action
-            ├─system.action.node_unpublish_action
-            ├─core.entity_view_mode.node.full
-            ├─core.entity_view_mode.node.rss
-            ├─core.entity_view_mode.node.search_index
-            ├─core.entity_view_mode.node.search_result
-            └─core.entity_view_mode.node.teaser
+            └─system.action.node_unpublish_action
             EXPECTED;
         $this->assertStringContainsString($expected, $this->getOutput());
 
@@ -124,21 +124,27 @@ class DrupalDependenciesTest extends TestCase
 
         $expected = <<<EXPECTED
             node
+            ├─core.entity_view_mode.node.full
+            ├─core.entity_view_mode.node.rss
+            ├─core.entity_view_mode.node.search_index
+            ├─core.entity_view_mode.node.search_result
+            ├─core.entity_view_mode.node.teaser
+            │ └─core.entity_view_display.node.forum.teaser
             ├─field.storage.node.body
             │ └─field.field.node.forum.body
+            │   ├─core.entity_form_display.node.forum.default
             │   ├─core.entity_view_display.node.forum.default
-            │   ├─core.entity_view_display.node.forum.teaser
-            │   └─core.entity_form_display.node.forum.default
+            │   └─core.entity_view_display.node.forum.teaser
             ├─field.storage.node.comment_forum
             │ └─field.field.node.forum.comment_forum
+            │   ├─core.entity_form_display.node.forum.default
             │   ├─core.entity_view_display.node.forum.default
-            │   ├─core.entity_view_display.node.forum.teaser
-            │   └─core.entity_form_display.node.forum.default
+            │   └─core.entity_view_display.node.forum.teaser
             ├─field.storage.node.taxonomy_forums
             │ └─field.field.node.forum.taxonomy_forums
+            │   ├─core.entity_form_display.node.forum.default
             │   ├─core.entity_view_display.node.forum.default
-            │   ├─core.entity_view_display.node.forum.teaser
-            │   └─core.entity_form_display.node.forum.default
+            │   └─core.entity_view_display.node.forum.teaser
             ├─system.action.node_delete_action
             ├─system.action.node_make_sticky_action
             ├─system.action.node_make_unsticky_action
@@ -146,13 +152,7 @@ class DrupalDependenciesTest extends TestCase
             ├─system.action.node_publish_action
             ├─system.action.node_save_action
             ├─system.action.node_unpromote_action
-            ├─system.action.node_unpublish_action
-            ├─core.entity_view_mode.node.full
-            ├─core.entity_view_mode.node.rss
-            ├─core.entity_view_mode.node.search_index
-            ├─core.entity_view_mode.node.search_result
-            └─core.entity_view_mode.node.teaser
-              └─core.entity_view_display.node.forum.teaser
+            └─system.action.node_unpublish_action
             EXPECTED;
         $this->assertStringContainsString($expected, $this->getOutput());
 

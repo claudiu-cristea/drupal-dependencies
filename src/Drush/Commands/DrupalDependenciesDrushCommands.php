@@ -176,6 +176,10 @@ class DrupalDependenciesDrushCommands extends DrushCommands
                 $this->dependents[$dependency][$dependent] = $dependent;
             }
         }
+        // Make dependents order predictable.
+        foreach ($this->dependents as $dependency => $dependents) {
+            ksort($this->dependents[$dependency]);
+        }
     }
 
     protected function scanConfigs(): void
