@@ -63,17 +63,19 @@ class DrupalDependenciesDrushCommands extends DrushCommands
             $this->buildDependents($this->dependencies['module-module']);
         } else {
             $this->scanConfigs();
-            $this->buildDependents($this->dependencies['config-module']);
-            $this->buildDependents($this->dependencies['config-config']);
+            $this
+                ->buildDependents($this->dependencies['config-module'])
+                ->buildDependents($this->dependencies['config-config']);
         }
 
         if (!isset($this->dependents[$module])) {
             $this->logger()->notice(dt('No @type depends on @module', [
                 '@module' => $module,
-                '@type' => $options['dependent-type'] === 'module' ? dt('config entity') : dt('other module'),
+                '@type' => $options['dependent-type'] === 'module' ? dt('other module') : dt('config entity'),
             ]));
             return null;
         }
+
         $this->canvas[] = $module;
         $this->buildTree($module);
 
@@ -125,6 +127,44 @@ class DrupalDependenciesDrushCommands extends DrushCommands
         }
     }
 
+    #[CLI\Command(name: 'why:config', aliases: ['wc'])]
+    #[CLI\Help(description: 'List all config entities depending on a given config entity')]
+    #[CLI\Argument(name: 'config', description: 'The config entity to check dependencies for')]
+    #[CLI\Usage(
+        name: 'drush why:config node.type.article',
+        description: 'Show all config entities modules depending on node.type.article'
+    )]
+    #[CLI\Bootstrap(level: DrupalBootLevels::FULL)]
+    public function dependentsOfConfig(string $config): ?string
+    {
+        $this->scanConfigs(false);
+        $this->buildDependents($this->dependencies['config-config']);
+
+        if (!isset($this->dependents[$config])) {
+            $this->logger()->notice(dt('No other config entity depends on @config', [
+                '@config' => $config,
+            ]));
+            return null;
+        }
+
+        $this->canvas[] = $config;
+        $this->buildTree($config);
+
+        return implode("\n", $this->canvas);
+    }
+
+    #[CLI\Hook(type: HookManager::ARGUMENT_VALIDATOR, target: 'why:config')]
+    public function validateDependentsOfConfig(CommandData $commandData): void
+    {
+        $configName = $commandData->input()->getArgument('config');
+        $configManager = \Drupal::getContainer()->get('config.manager');
+        if (!$configManager->loadConfigEntityByName($configName)) {
+            throw new \InvalidArgumentException(dt('Invalid @config config entity', [
+                '@config' => $configName,
+            ]));
+        }
+    }
+
     /**
      * @param string $dependency
      * @param array $path
@@ -170,22 +210,29 @@ class DrupalDependenciesDrushCommands extends DrushCommands
 
     /**
      * @param array $list
+     * @return $this
      */
-    protected function buildDependents(array $list): void
+    protected function buildDependents(array $list): static
     {
         foreach ($list as $dependent => $dependencies) {
             foreach ($dependencies as $dependency) {
                 $this->dependents[$dependency][$dependent] = $dependent;
             }
         }
+
         // Make dependents order predictable.
         foreach ($this->dependents as $dependency => $dependents) {
             ksort($this->dependents[$dependency]);
         }
         ksort($this->dependents);
+
+        return $this;
     }
 
-    protected function scanConfigs(): void
+    /**
+     * @param bool $scanModuleDependencies
+     */
+    protected function scanConfigs(bool $scanModuleDependencies = true): void
     {
         $entityTypeManager = \Drupal::entityTypeManager();
         $configTypeIds = array_keys(
@@ -198,7 +245,7 @@ class DrupalDependenciesDrushCommands extends DrushCommands
             foreach ($entityTypeManager->getStorage($configTypeId)->loadMultiple() as $config) {
                 $dependencies = $config->getDependencies();
                 $name = $config->getConfigDependencyName();
-                if (!empty($dependencies['module'])) {
+                if ($scanModuleDependencies && !empty($dependencies['module'])) {
                     $this->dependencies['config-module'][$name] = $dependencies['module'];
                 }
                 if (!empty($dependencies['config'])) {

@@ -166,4 +166,45 @@ class DrupalDependenciesTest extends TestCase
         $this->drush('entity:delete', ['taxonomy_term']);
         $this->drush('pmu', ['node,forum,taxonomy,history']);
     }
+
+    /**
+     * @covers ::dependentsOfConfig
+     */
+    public function testConfigDependentOfConfig(): void
+    {
+        $this->drush('why:config', ['system.site'], [], null, null, 1);
+        $this->assertStringContainsString('Invalid system.site config entity', $this->getErrorOutput());
+
+        // Install node module.
+        $this->drush('pm:install', ['forum']);
+
+        // No installed dependencies.
+        $this->drush('why:config', ['node.type.forum']);
+        $expected = <<<EXPECTED
+            node.type.forum
+            ├─core.base_field_override.node.forum.promote
+            ├─core.base_field_override.node.forum.title
+            ├─core.entity_form_display.node.forum.default
+            ├─core.entity_view_display.node.forum.default
+            ├─core.entity_view_display.node.forum.teaser
+            ├─field.field.node.forum.body
+            │ ├─core.entity_form_display.node.forum.default
+            │ ├─core.entity_view_display.node.forum.default
+            │ └─core.entity_view_display.node.forum.teaser
+            ├─field.field.node.forum.comment_forum
+            │ ├─core.entity_form_display.node.forum.default
+            │ ├─core.entity_view_display.node.forum.default
+            │ └─core.entity_view_display.node.forum.teaser
+            └─field.field.node.forum.taxonomy_forums
+              ├─core.entity_form_display.node.forum.default
+              ├─core.entity_view_display.node.forum.default
+              └─core.entity_view_display.node.forum.teaser
+            EXPECTED;
+        $this->assertStringContainsString($expected, $this->getOutput());
+
+        // Cleanup.
+        $this->drush('entity:delete', ['taxonomy_term']);
+        $this->drush('pmu', ['node,forum,taxonomy,history']);
+
+    }
 }

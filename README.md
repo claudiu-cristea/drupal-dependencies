@@ -8,7 +8,7 @@ chain in a Drupal installation.
 
 ## Use cases
 
-### Get all installed modules requiring a given module
+### Get all installed modules depending on a given module
 
 ```bash
 ./vendor/bin/drush why:module --dependent-type=module
@@ -20,7 +20,7 @@ node
 └─forum
 ```
 
-###  Get all modules requiring a given module (installed o not)
+###  Get all modules depending on a given module (installed o not)
 
 ```bash
 ./vendor/bin/drush why:module node --dependent-type=module -no-only-installed
@@ -35,10 +35,10 @@ node
 └─tracker
 ```
 
-### Get all config entities requiring a given module
+### Get all config entities depending on a given module
 
 ```bash
-./vendor/bin/drush why:module --dependent-type=config
+./vendor/bin/drush why:module node --dependent-type=config
 node
 ├─core.entity_view_mode.node.full
 ├─core.entity_view_mode.node.rss
@@ -69,6 +69,30 @@ node
 ├─system.action.node_save_action
 ├─system.action.node_unpromote_action
 └─system.action.node_unpublish_action
+```
+
+### Get all config entities depending on a given confog entity
+
+```bash
+./vendor/bin/drush why:config node.type.forum
+node.type.forum
+├─core.base_field_override.node.forum.promote
+├─core.base_field_override.node.forum.title
+├─core.entity_form_display.node.forum.default
+├─core.entity_view_display.node.forum.default
+├─core.entity_view_display.node.forum.teaser
+├─field.field.node.forum.body
+│ ├─core.entity_form_display.node.forum.default
+│ ├─core.entity_view_display.node.forum.default
+│ └─core.entity_view_display.node.forum.teaser
+├─field.field.node.forum.comment_forum
+│ ├─core.entity_form_display.node.forum.default
+│ ├─core.entity_view_display.node.forum.default
+│ └─core.entity_view_display.node.forum.teaser
+└─field.field.node.forum.taxonomy_forums
+  ├─core.entity_form_display.node.forum.default
+  ├─core.entity_view_display.node.forum.default
+  └─core.entity_view_display.node.forum.teaser
 ```
 
 ## Author
