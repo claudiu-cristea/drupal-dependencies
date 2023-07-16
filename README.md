@@ -92,7 +92,7 @@ node
 ```
 </details>
 
-### Get all config entities depending on a given confog entity
+### Get all config entities depending on a given config entity
 
 ```bash
 ./vendor/bin/drush why:config node.type.forum
