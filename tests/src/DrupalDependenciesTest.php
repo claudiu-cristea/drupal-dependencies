@@ -205,6 +205,5 @@ class DrupalDependenciesTest extends TestCase
         // Cleanup.
         $this->drush('entity:delete', ['taxonomy_term']);
         $this->drush('pmu', ['node,forum,taxonomy,history']);
-
     }
 }
