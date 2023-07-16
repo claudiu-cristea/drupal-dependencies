@@ -17,7 +17,7 @@ node
 ├─history
 │ └─forum
 └─taxonomy
-└─forum
+  └─forum
 ```
 
 ###  Get all modules depending on a given module (installed o not)
