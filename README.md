@@ -27,7 +27,7 @@ node
 ```
 </details>
 
-###  Get all modules depending on a given module (installed o not)
+###  Get all modules depending on a given module (installed or not)
 
 ```bash
 ./vendor/bin/drush why:module node --dependent-type=module --no-only-installed
