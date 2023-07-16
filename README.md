@@ -11,7 +11,7 @@ chain in a Drupal installation.
 ### Get all installed modules depending on a given module
 
 ```bash
-./vendor/bin/drush why:module --dependent-type=module
+./vendor/bin/drush why:module node --dependent-type=module
 node
 ├─forum
 ├─history
