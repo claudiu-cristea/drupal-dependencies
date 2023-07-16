@@ -12,6 +12,12 @@ chain in a Drupal installation.
 
 ```bash
 ./vendor/bin/drush why:module node --dependent-type=module
+```
+<details>
+
+<summary>View output</summary>
+
+```
 node
 ├─forum
 ├─history
@@ -19,11 +25,18 @@ node
 └─taxonomy
   └─forum
 ```
+</details>
 
 ###  Get all modules depending on a given module (installed o not)
 
 ```bash
 ./vendor/bin/drush why:module node --dependent-type=module -no-only-installed
+```
+<details>
+
+<summary>View output</summary>
+
+```
 node
 ├─book
 ├─forum
@@ -34,11 +47,18 @@ node
 │ └─forum
 └─tracker
 ```
+</details>
 
 ### Get all config entities depending on a given module
 
 ```bash
 ./vendor/bin/drush why:module node --dependent-type=config
+```
+<details>
+
+<summary>View output</summary>
+
+```
 node
 ├─core.entity_view_mode.node.full
 ├─core.entity_view_mode.node.rss
@@ -70,11 +90,18 @@ node
 ├─system.action.node_unpromote_action
 └─system.action.node_unpublish_action
 ```
+</details>
 
 ### Get all config entities depending on a given confog entity
 
 ```bash
 ./vendor/bin/drush why:config node.type.forum
+```
+<details>
+
+<summary>View output</summary>
+
+```
 node.type.forum
 ├─core.base_field_override.node.forum.promote
 ├─core.base_field_override.node.forum.title
@@ -94,6 +121,7 @@ node.type.forum
   ├─core.entity_view_display.node.forum.default
   └─core.entity_view_display.node.forum.teaser
 ```
+</details>
 
 ## Author
 
