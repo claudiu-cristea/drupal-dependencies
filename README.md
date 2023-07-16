@@ -30,7 +30,7 @@ node
 ###  Get all modules depending on a given module (installed o not)
 
 ```bash
-./vendor/bin/drush why:module node --dependent-type=module -no-only-installed
+./vendor/bin/drush why:module node --dependent-type=module --no-only-installed
 ```
 <details>
 
