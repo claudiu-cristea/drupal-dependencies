@@ -63,6 +63,24 @@ class DrupalDependenciesTest extends TestCase
             EXPECTED;
         $this->assertSame($expected, $this->getOutput());
 
+        // Test result formatted as JSON.
+        $this->drush('wm', ['node'], [
+            'dependent-type' => 'module',
+            'format' => 'json',
+        ]);
+        $expected = [
+            'node' => [
+                'forum' => 'forum',
+                'history' => [
+                    'forum' => 'forum',
+                ],
+                'taxonomy' => [
+                    'forum' => 'forum',
+                ],
+            ],
+        ];
+        $this->assertSame($expected, $this->getOutputFromJSON());
+
         // Cleanup
         $this->drush('entity:delete', ['taxonomy_term']);
         $this->drush('pmu', ['node,forum,taxonomy,history']);

@@ -6,6 +6,7 @@ namespace Drupal\Dependencies\Drush\Commands;
 
 use Consolidation\AnnotatedCommand\CommandData;
 use Consolidation\AnnotatedCommand\Hooks\HookManager;
+use Consolidation\OutputFormatters\StructuredData\UnstructuredData;
 use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Config\Entity\ConfigEntityInterface;
 use Drupal\Core\Entity\EntityTypeInterface;
@@ -21,11 +22,10 @@ use Symfony\Component\Console\Input\InputOption;
  */
 class DrupalDependenciesDrushCommands extends DrushCommands
 {
-    private const CIRCULAR_REFERENCE = 'circular_reference';
+    private const CIRCULAR_REFERENCE = '***circular***';
     private array $dependents = [];
     private array $tree = [];
     private array $relation = [];
-    private array $canvas = [];
     private array $dependencies = [
       'module-module' => [],
       'config-module' => [],
@@ -34,7 +34,7 @@ class DrupalDependenciesDrushCommands extends DrushCommands
 
     #[CLI\Command(name: 'why:module', aliases: ['wm'])]
     #[CLI\Help(description: 'List all objects (modules, configurations) depending on a given module')]
-    #[CLI\Argument(name: 'module', description: 'The module to check dependencies for')]
+    #[CLI\Argument(name: 'module', description: 'The module to check dependents for')]
     #[CLI\Option(
         name: 'dependent-type',
         description: 'Type of dependents: module, config',
@@ -53,11 +53,16 @@ class DrupalDependenciesDrushCommands extends DrushCommands
         name: 'drush why:module node --dependent-type=config',
         description: 'Show all configuration entities depending on node module'
     )]
+    #[CLI\Usage(
+        name: 'drush why:module node --dependent-type=config --format=json',
+        description: 'Return config entity dependents as JSON'
+    )]
     #[CLI\Bootstrap(level: DrupalBootLevels::FULL)]
     public function dependentsOfModule(string $module, array $options = [
         'dependent-type' => InputOption::VALUE_REQUIRED,
         'only-installed' => true,
-    ]): ?string
+        'format' => '',
+    ]): mixed
     {
         if ($options['dependent-type'] === 'module') {
             $this->buildDependents($this->dependencies['module-module']);
@@ -76,10 +81,13 @@ class DrupalDependenciesDrushCommands extends DrushCommands
             return null;
         }
 
-        $this->canvas[] = $module;
         $this->buildTree($module);
 
-        return implode("\n", $this->canvas);
+        if (empty($options['format'])) {
+            return $this->drawTree($module);
+        }
+
+        return new UnstructuredData($this->tree);
     }
 
     #[CLI\Hook(type: HookManager::ARGUMENT_VALIDATOR, target: 'why:module')]
@@ -129,13 +137,19 @@ class DrupalDependenciesDrushCommands extends DrushCommands
 
     #[CLI\Command(name: 'why:config', aliases: ['wc'])]
     #[CLI\Help(description: 'List all config entities depending on a given config entity')]
-    #[CLI\Argument(name: 'config', description: 'The config entity to check dependencies for')]
+    #[CLI\Argument(name: 'config', description: 'The config entity to check dependents for')]
     #[CLI\Usage(
         name: 'drush why:config node.type.article',
         description: 'Show all config entities modules depending on node.type.article'
     )]
+    #[CLI\Usage(
+        name: 'drush why:config node.type.article --format=yaml',
+        description: 'Return config entity dependents as YAML'
+    )]
     #[CLI\Bootstrap(level: DrupalBootLevels::FULL)]
-    public function dependentsOfConfig(string $config): ?string
+    public function dependentsOfConfig(string $config, array $options = [
+        'format' => '',
+    ]): mixed
     {
         $this->scanConfigs(false);
         $this->buildDependents($this->dependencies['config-config']);
@@ -147,10 +161,13 @@ class DrupalDependenciesDrushCommands extends DrushCommands
             return null;
         }
 
-        $this->canvas[] = $config;
         $this->buildTree($config);
 
-        return implode("\n", $this->canvas);
+        if (empty($options['format'])) {
+            return $this->drawTree($config);
+        }
+
+        return new UnstructuredData($this->tree);
     }
 
     #[CLI\Hook(type: HookManager::ARGUMENT_VALIDATOR, target: 'why:config')]
@@ -168,42 +185,29 @@ class DrupalDependenciesDrushCommands extends DrushCommands
     /**
      * @param string $dependency
      * @param array $path
-     * @param string $indent
      */
-    protected function buildTree(string $dependency, array $path = [], string $indent = ''): void
+    protected function buildTree(string $dependency, array $path = []): void
     {
         $path[] = $dependency;
-        $dependents = $this->dependents[$dependency];
-        foreach (array_keys($dependents) as $delta => $dependent) {
-            $lastFromThisLevel = $delta + 1 < count($dependents);
-            $char = $lastFromThisLevel ? '├' : '└';
-            $stroke = $indent . "{$char}─" . $dependent;
+        foreach ($this->dependents[$dependency] as $dependent) {
+            if (isset($this->relation[$dependency]) && $this->relation[$dependency] === $dependent) {
+                // This relation has been already defined on other path. We mark
+                // it as circular reference.
+                NestedArray::setValue($this->tree, [...$path, ...[$dependent]], $dependent . ':' . self::CIRCULAR_REFERENCE);
+                continue;
+            }
+
             if (!NestedArray::keyExists($this->tree, $path)) {
                 NestedArray::setValue($this->tree, $path, []);
             }
 
-            $circularReference = isset($this->relation[$dependency]) && $this->relation[$dependency] === $dependent;
-            if ($circularReference) {
-                // This relation has been already defined on other path. We mark
-                // it as circular reference.
-                NestedArray::setValue($this->tree, [...$path, ...[$dependent]], self::CIRCULAR_REFERENCE);
-                $stroke .= ' (' . dt('CIRCULAR') . ')';
-            }
-
-            // Draw a new line to the canvas.
-            $this->canvas[] = $stroke;
-
-            if ($circularReference) {
-                continue;
-            }
-
             // Save this relation to avoid infinite circular references.
             $this->relation[$dependency] = $dependent;
+
             if (isset($this->dependents[$dependent])) {
-                $char = $lastFromThisLevel ? '│' : ' ';
-                $this->buildTree($dependent, $path, $indent . "$char ");
+                $this->buildTree($dependent, $path);
             } else {
-                NestedArray::setValue($this->tree, [...$path, ...[$dependent]], []);
+                NestedArray::setValue($this->tree, [...$path, ...[$dependent]], $dependent);
             }
         }
     }
@@ -253,5 +257,26 @@ class DrupalDependenciesDrushCommands extends DrushCommands
                 }
             }
         }
+    }
+
+    private function drawTree(string $dependency): string
+    {
+        $recursiveArrayIterator = new \RecursiveArrayIterator(current($this->tree));
+        $recursiveTreeIterator = new \RecursiveTreeIterator($recursiveArrayIterator, \RecursiveTreeIterator::SELF_FIRST);
+        $recursiveTreeIterator->setPrefixPart(\RecursiveTreeIterator::PREFIX_END_HAS_NEXT, '├─');
+        $recursiveTreeIterator->setPrefixPart(\RecursiveTreeIterator::PREFIX_END_LAST, '└─');
+        $recursiveTreeIterator->setPrefixPart(\RecursiveTreeIterator::PREFIX_MID_HAS_NEXT, '│ ');
+        $canvas = [];
+        $canvas[] = $dependency;
+        foreach ($recursiveTreeIterator as $row => $value) {
+            $key = $recursiveTreeIterator->getInnerIterator()->key();
+            $current = $recursiveTreeIterator->getInnerIterator()->current();
+            $label = $row;
+            if ($key . ':' . self::CIRCULAR_REFERENCE === $current) {
+                $label .= ' <info>(' . dt('circular') . ')</info>';
+            }
+            $canvas[]= $label;
+        }
+        return implode(PHP_EOL, $canvas);
     }
 }
