@@ -200,10 +200,6 @@ class DrupalDependenciesDrushCommands extends DrushCommands
                 continue;
             }
 
-            if (!NestedArray::keyExists($this->tree, $path)) {
-                NestedArray::setValue($this->tree, $path, []);
-            }
-
             // Save this relation to avoid infinite circular references.
             $this->relation[$dependency] = $dependent;
 
@@ -216,12 +212,12 @@ class DrupalDependenciesDrushCommands extends DrushCommands
     }
 
     /**
-     * @param array $list
+     * @param array $dependenciesPerDependent
      * @return $this
      */
-    protected function buildDependents(array $list): static
+    protected function buildDependents(array $dependenciesPerDependent): static
     {
-        foreach ($list as $dependent => $dependencies) {
+        foreach ($dependenciesPerDependent as $dependent => $dependencies) {
             foreach ($dependencies as $dependency) {
                 $this->dependents[$dependency][$dependent] = $dependent;
             }
