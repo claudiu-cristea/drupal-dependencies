@@ -193,7 +193,10 @@ class DrupalDependenciesDrushCommands extends DrushCommands
             if (isset($this->relation[$dependency]) && $this->relation[$dependency] === $dependent) {
                 // This relation has been already defined on other path. We mark
                 // it as circular reference.
-                NestedArray::setValue($this->tree, [...$path, ...[$dependent]], $dependent . ':' . self::CIRCULAR_REFERENCE);
+                NestedArray::setValue($this->tree, [
+                    ...$path,
+                    ...[$dependent],
+                ], $dependent . ':' . self::CIRCULAR_REFERENCE);
                 continue;
             }
 
@@ -262,7 +265,10 @@ class DrupalDependenciesDrushCommands extends DrushCommands
     private function drawTree(string $dependency): string
     {
         $recursiveArrayIterator = new \RecursiveArrayIterator(current($this->tree));
-        $recursiveTreeIterator = new \RecursiveTreeIterator($recursiveArrayIterator, \RecursiveTreeIterator::SELF_FIRST);
+        $recursiveTreeIterator = new \RecursiveTreeIterator(
+            $recursiveArrayIterator,
+            \RecursiveTreeIterator::SELF_FIRST,
+        );
         $recursiveTreeIterator->setPrefixPart(\RecursiveTreeIterator::PREFIX_END_HAS_NEXT, '├─');
         $recursiveTreeIterator->setPrefixPart(\RecursiveTreeIterator::PREFIX_END_LAST, '└─');
         $recursiveTreeIterator->setPrefixPart(\RecursiveTreeIterator::PREFIX_MID_HAS_NEXT, '│ ');
@@ -275,7 +281,7 @@ class DrupalDependenciesDrushCommands extends DrushCommands
             if ($key . ':' . self::CIRCULAR_REFERENCE === $current) {
                 $label .= ' <info>(' . dt('circular') . ')</info>';
             }
-            $canvas[]= $label;
+            $canvas[] = $label;
         }
         return implode(PHP_EOL, $canvas);
     }
