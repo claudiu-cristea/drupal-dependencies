@@ -18,21 +18,21 @@ jobs:
     steps:
       - name: clone
         uses: actions/checkout@v3
-      - name: docker-compose up -d
-        run: docker-compose up -d
+      - name: docker compose up -d
+        run: docker compose up -d
       - name: php --version
-        run: docker-compose exec -T php php --version
+        run: docker compose exec -T php php --version
       - name: composer self-update
-        run: docker-compose exec -T php composer self-update
+        run: docker compose exec -T php composer self-update
       - name: composer require
-        run: docker-compose exec -u ${DOCKER_USER_ID} -T php composer require --no-interaction --dev --no-update drupal/core:${DRUPAL_VERSION} drupal/core-composer-scaffold:${DRUPAL_VERSION}
+        run: docker compose exec -u ${DOCKER_USER_ID} -T php composer require --no-interaction --dev --no-update drupal/core:${DRUPAL_VERSION} drupal/core-composer-scaffold:${DRUPAL_VERSION}
       - name: composer install
-        run: docker-compose exec -T php composer install --no-progress --no-ansi --no-interaction
+        run: docker compose exec -T php composer install --no-progress --no-ansi --no-interaction
       - name: composer site:install
-        run: docker-compose exec -T php composer site:install
+        run: docker compose exec -T php composer site:install
       - name: drush status
-        run: docker-compose exec -T php ./vendor/bin/drush status
+        run: docker compose exec -T php ./vendor/bin/drush status
       - name: composer phpcs
-        run: docker-compose exec -T php composer phpcs
+        run: docker compose exec -T php composer phpcs
       - name: composer phpunit
-        run: docker-compose exec -T php composer phpunit
+        run: docker compose exec -T php composer phpunit
