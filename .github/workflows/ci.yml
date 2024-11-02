@@ -33,7 +33,7 @@ jobs:
         run: docker compose exec -u ${DOCKER_USER_ID} -T php composer require --no-interaction --dev --no-update drupal/core:${DRUPAL_VERSION} drupal/core-composer-scaffold:${DRUPAL_VERSION}
       - name: composer require contrib
         if: matrix.drupal_version == '^11'
-        run: docker compose exec -u ${DOCKER_USER_ID} -T php composer require --no-interaction --dev --no-update drupal/book drupal/forum drupal/statistics drupal/tracker
+        run: docker compose exec -u ${DOCKER_USER_ID} -T php composer require --no-interaction --dev --no-update drupal/book drupal/forum drupal/statistics
       - name: composer install
         run: docker compose exec -T php composer install --no-progress --no-ansi --no-interaction
       - name: composer site:install
