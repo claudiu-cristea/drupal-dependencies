@@ -39,7 +39,8 @@
     },
     "extra": {
         "installer-paths": {
-            "build/core": ["type:drupal-core"]
+            "build/core": ["type:drupal-core"],
+            "build/modules/contrib/{$name}": ["type:drupal-module"]
         },
         "drupal-scaffold": {
             "locations": {
