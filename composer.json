@@ -60,6 +60,10 @@
     },
     "repositories": [
         {
+            "type": "vcs",
+            "url": "https://git.drupalcode.org/issue/tracker-3379544.git"
+        },
+        {
             "type": "composer",
             "url": "https://packages.drupal.org/8"
         }
