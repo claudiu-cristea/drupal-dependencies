@@ -56,5 +56,11 @@
         "site:install": "./vendor/bin/drush site:install testing --root=build --sites-subdir=default --db-url=sqlite://sites/default/files/.ht.sqlite --yes",
         "phpunit": "./vendor/bin/phpunit tests",
         "phpcs": "./vendor/bin/phpcs"
-    }
+    },
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://packages.drupal.org/8"
+        }
+    ]
 }
